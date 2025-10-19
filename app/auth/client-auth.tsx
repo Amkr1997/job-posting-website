@@ -1,10 +1,16 @@
 "use client";
 
-import { usersFormSchema, usersFormSchemaType } from "@/types/userFormSchema";
+import {
+  signInUserSchema,
+  signInUserSchemaType,
+  signUpUserSchema,
+  signUpUserSchemaType,
+} from "@/types/userFormSchema";
 import { useForm, SubmitHandler } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
+import { signin, signup } from "@/lib/actions/auth-action";
 
 interface AuthClientComponentProps {
   type: "signup" | "signin";
@@ -25,14 +31,23 @@ const AuthClientComponent = ({
     handleSubmit,
     formState: { errors },
     resetField,
-  } = useForm<usersFormSchemaType>({
-    resolver: zodResolver(usersFormSchema),
+  } = useForm<signUpUserSchemaType>({
+    resolver: zodResolver(signUpUserSchema),
+  });
+
+  const {
+    register: registerSignIn,
+    handleSubmit: handleSubmitSignIn,
+    formState: { errors: signInUserErrors },
+    resetField: resetFieldSignIn,
+  } = useForm<signInUserSchemaType>({
+    resolver: zodResolver(signInUserSchema),
   });
 
   const switchFormType = (newFormType: "signin" | "signup") => {
     if (newFormType === "signin") {
-      resetField("email");
-      resetField("password");
+      resetFieldSignIn("email");
+      resetFieldSignIn("password");
     } else {
       resetField("name");
       resetField("email");
@@ -45,87 +60,141 @@ const AuthClientComponent = ({
     router.push(`/auth?${params.toString()}`);
   };
 
-  const onSubmit: SubmitHandler<usersFormSchemaType> = (data) => {
+  const onSignUpSubmit: SubmitHandler<signUpUserSchemaType> = async (data) => {
     try {
-      if (type === "signup") {
-        const { name, email, password, confirmPassword } = data;
-        console.log(name, email, password, confirmPassword);
-      } else {
-        const { email, password } = data;
-        console.log(email, password);
+      const { name, email, password } = data;
+      const result = await signup(name, email, password);
+
+      if (!result.user) {
+        console.log(result);
+        throw new Error("Failed to sign up");
       }
-    } catch (error) {
-      console.error(error);
-    } finally {
+
+      resetField("name");
       resetField("email");
       resetField("password");
-      if (type === "signup") {
-        resetField("name");
-        resetField("confirmPassword");
-      }
+      resetField("confirmPassword");
+    } catch (error) {
+      console.error(error);
     }
   };
 
+  const onSignInSubmit: SubmitHandler<signInUserSchemaType> = async (data) => {
+    try {
+      const { email, password } = data;
+      const result = await signin(email, password);
+
+      if (!result.user) {
+        throw new Error("Failed to sign in");
+      }
+
+      resetFieldSignIn("email");
+      resetFieldSignIn("password");
+    } catch (error) {
+      console.error(error);
+      throw new Error("Failed to sign in");
+    }
+  };
   return (
     <>
       <section className="max-w-[50vw] mx-auto pt-10">
         <h1 className="text-2xl font-bold text-center">{title}</h1>
         <p className="text-center text-gray-500">{description}</p>
         <form
-          onSubmit={handleSubmit(onSubmit)}
+          onSubmit={
+            type === "signup"
+              ? handleSubmit(onSignUpSubmit)
+              : handleSubmitSignIn(onSignInSubmit)
+          }
           className="flex flex-col gap-2 w-full"
         >
           {type === "signup" && (
-            <div className="flex flex-col gap-2">
-              <label htmlFor="name">Name</label>
-              <input
-                type="text"
-                id="name"
-                {...register("name")}
-                className="border border-gray-300 rounded-md p-2"
-              />
-              {errors.name && (
-                <p className="text-red-500">{errors.name.message}</p>
-              )}
-            </div>
+            <>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="name">Name</label>
+                <input
+                  type="text"
+                  id="name"
+                  {...register("name")}
+                  className="border border-gray-300 rounded-md p-2"
+                />
+                {errors.name && (
+                  <p className="text-red-500">{errors.name.message}</p>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="email">Email</label>
+                <input
+                  type="email"
+                  id="email"
+                  {...register("email")}
+                  className="border border-gray-300 rounded-md p-2"
+                />
+                {errors.email && (
+                  <p className="text-red-500">{errors.email.message}</p>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="password">Password</label>
+                <input
+                  type="password"
+                  id="password"
+                  {...register("password")}
+                  className="border border-gray-300 rounded-md p-2"
+                />
+                {type === "signup" && errors?.password && (
+                  <p className="text-red-500">{errors.password.message}</p>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label htmlFor="confirmPassword">Confirm Password</label>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  {...register("confirmPassword")}
+                  className="border border-gray-300 rounded-md p-2"
+                />
+                {errors.confirmPassword && (
+                  <p className="text-red-500">
+                    {errors.confirmPassword.message}
+                  </p>
+                )}
+              </div>
+            </>
           )}
-          <div className="flex flex-col gap-2">
-            <label htmlFor="email">Email</label>
-            <input
-              type="email"
-              id="email"
-              {...register("email")}
-              className="border border-gray-300 rounded-md p-2"
-            />
-            {errors.email && (
-              <p className="text-red-500">{errors.email.message}</p>
-            )}
-          </div>
-          <div className="flex flex-col gap-2">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              {...register("password")}
-              className="border border-gray-300 rounded-md p-2"
-            />
-            {errors.password && (
-              <p className="text-red-500">{errors.password.message}</p>
-            )}
-          </div>
-          {type === "signup" && (
-            <div className="flex flex-col gap-2">
-              <label htmlFor="confirmPassword">Confirm Password</label>
-              <input
-                type="password"
-                id="confirmPassword"
-                {...register("confirmPassword")}
-                className="border border-gray-300 rounded-md p-2"
-              />
-              {errors.confirmPassword && (
-                <p className="text-red-500">{errors.confirmPassword.message}</p>
-              )}
-            </div>
+
+          {type === "signin" && (
+            <>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="email">Email</label>
+                <input
+                  type="email"
+                  id="email"
+                  {...registerSignIn("email")}
+                  className="border border-gray-300 rounded-md p-2"
+                />
+                {signInUserErrors.email && (
+                  <p className="text-red-500">
+                    {signInUserErrors.email.message}
+                  </p>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <label htmlFor="password">Password</label>
+                <input
+                  type="password"
+                  id="password"
+                  {...registerSignIn("password")}
+                  className="border border-gray-300 rounded-md p-2"
+                />
+                {signInUserErrors.password && (
+                  <p className="text-red-500">
+                    {signInUserErrors.password.message}
+                  </p>
+                )}
+              </div>
+            </>
           )}
           <button
             type="submit"

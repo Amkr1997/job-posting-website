@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { auth } from "../auth";
 
 export const signup = async (name: string, email: string, password: string) => {
+  console.log(name, email, password);
   const result = await auth.api.signUpEmail({
     body: {
       name,

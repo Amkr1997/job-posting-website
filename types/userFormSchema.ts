@@ -1,15 +1,17 @@
 import * as z from "zod";
 
 // Single schema with optional fields for signup/signin
-export const usersFormSchema = z
+export const signUpUserSchema = z
   .object({
-    name: z.string().min(1, { message: "Name is required" }).optional(),
+    name: z.string().min(1, { message: "Name is required" }),
     email: z.string().email({ message: "Invalid email address" }),
     password: z.string().min(8, { message: "Password must be 8 characters" }),
     confirmPassword: z
       .string()
       .min(8, { message: "Password must be 8 characters" })
-      .optional(),
+      .refine((val) => val !== "", {
+        message: "Confirm password is required",
+      }),
   })
   .refine(
     (data) => {
@@ -25,8 +27,18 @@ export const usersFormSchema = z
     }
   );
 
-export type usersFormSchemaType = z.infer<typeof usersFormSchema>;
+export const signInUserSchema = z.object({
+  email: z.string().email({ message: "Invalid email address" }),
+  password: z.string().min(8, { message: "Password must be 8 characters" }),
+});
 
-export type usersFormErrors = Partial<
-  Record<keyof usersFormSchemaType, string[]>
+export type signUpUserSchemaType = z.infer<typeof signUpUserSchema>;
+export type signInUserSchemaType = z.infer<typeof signInUserSchema>;
+
+export type signUpUserErrors = Partial<
+  Record<keyof signUpUserSchemaType, string[]>
+>;
+
+export type signInUserErrors = Partial<
+  Record<keyof signInUserSchemaType, string[]>
 >;
